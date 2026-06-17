@@ -45,6 +45,14 @@ async function run() {
             res.send(parcels);
         })
 
+        app.get('/parcels/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = new ObjectId(id);
+
+            const result = await parcelsCollection.findOne(query);
+            res.send(result);
+        })
+
         app.post('/parcels', async (req, res) => {
             const parcel = req.body;
             parcel.createdAt = new Date();
@@ -57,7 +65,7 @@ async function run() {
             const query = { _id: new ObjectId(id) };
 
             const result = await parcelsCollection.deleteOne(query);
-            res.send(result);``
+            res.send(result); ``
 
         })
 
