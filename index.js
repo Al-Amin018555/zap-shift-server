@@ -4,7 +4,7 @@ require('dotenv').config()
 var cors = require('cors');
 const port = process.env.PORT || 3000;
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 //middleware
 app.use(express.json())
@@ -41,7 +41,7 @@ async function run() {
             }
             const options = { sort: { createdAt: -1 } }
 
-            const parcels = await parcelsCollection.find(query,options).toArray();
+            const parcels = await parcelsCollection.find(query, options).toArray();
             res.send(parcels);
         })
 
@@ -50,6 +50,15 @@ async function run() {
             parcel.createdAt = new Date();
             const result = await parcelsCollection.insertOne(parcel);
             res.send(result)
+        })
+
+        app.delete('/parcels/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+
+            const result = await parcelsCollection.deleteOne(query);
+            res.send(result);``
+
         })
 
         // Send a ping to confirm a successful connection
