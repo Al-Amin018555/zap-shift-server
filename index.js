@@ -39,13 +39,15 @@ async function run() {
             if (email) {
                 query.senderEmail = email;
             }
+            const options = { sort: { createdAt: -1 } }
 
-            const parcels = await parcelsCollection.find(query).toArray();
+            const parcels = await parcelsCollection.find(query,options).toArray();
             res.send(parcels);
         })
 
         app.post('/parcels', async (req, res) => {
             const parcel = req.body;
+            parcel.createdAt = new Date();
             const result = await parcelsCollection.insertOne(parcel);
             res.send(result)
         })
