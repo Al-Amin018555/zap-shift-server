@@ -165,6 +165,7 @@ async function run() {
             const query = { transactionId: transactionId }
 
             const paymentIsExist = await paymentCollection.findOne(query);
+
             if (paymentIsExist) {
                 return res.send({ message: "you have already paid for this", transactionId, trackingId: paymentIsExist.trackingId })
             }
@@ -185,7 +186,7 @@ async function run() {
                 const result = await parcelsCollection.updateOne(query, update);
 
                 const payment = {
-                    amount: session.amount_total,
+                    amount: session.amount_total / 100,
                     currency: session.currency,
                     customerEmail: session.customer_email,
                     parcelId: session.metadata.parcelId,
@@ -210,6 +211,19 @@ async function run() {
             }
             res.send({ success: false })
 
+        })
+
+        app.get('/payments', async (req, res) => {
+            const email = req.query.email;
+
+            const query = {};
+
+            if (email) {
+                query.customerEmail = email;
+            }
+
+            const result = await paymentCollection.find(query).toArray();
+            res.send(result);
         })
 
         // Send a ping to confirm a successful connection
