@@ -78,9 +78,28 @@ async function run() {
         await client.connect();
 
         const db = client.db("zap_shift_db");
+        const usersCollection = db.collection("users");
         const parcelsCollection = db.collection("parcels");
         const paymentCollection = db.collection("payments");
+        const ridersCollection = db.collection("riders");
 
+        // users related apis
+        app.post('/users', async (req, res) => {
+
+            const user = req.body;
+            user.role = 'user',
+                user.createdAt = new Date();
+            const email = user.email;
+
+            const userExists = await usersCollection.findOne({ email });
+            if (userExists) {
+                return res.send({ message: "user already exist" });
+            }
+
+            const result = await usersCollection.insertOne(user);
+            res.send(result);
+
+        })
 
         // parcel's api's
         app.get('/parcels', async (req, res) => {
@@ -150,7 +169,6 @@ async function run() {
         //     console.log(session);
         //     res.send({ url: session.url })
         // });
-
 
         app.post('/create-checkout-session', async (req, res) => {
 
@@ -257,8 +275,19 @@ async function run() {
                 }
             }
 
-            const result = await paymentCollection.find(query).sort({paidAt: -1}).toArray();
+            const result = await paymentCollection.find(query).sort({ paidAt: -1 }).toArray();
             res.send(result);
+        })
+
+        // riders related apis
+        app.post('/riders', async (req, res) => {
+            const rider = req.body;
+            rider.status = "pending",
+            rider.createdAt = new Date();
+
+            const result = await ridersCollection.insertOne(rider);
+            res.send(result)
+
         })
 
         // Send a ping to confirm a successful connection
