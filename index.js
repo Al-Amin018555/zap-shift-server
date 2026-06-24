@@ -5,6 +5,25 @@ var cors = require('cors');
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.STRIPE_SECRECT);
+const crypto = require('crypto');
+
+function generateTrackingId() {
+    const date = new Date();
+
+    const datePart =
+        String(date.getFullYear()).slice(-2) +
+        String(date.getMonth() + 1).padStart(2, '0') +
+        String(date.getDate()).padStart(2, '0');
+
+    const randomPart = crypto
+        .randomBytes(3)
+        .toString('hex')
+        .toUpperCase();
+
+    return `PCL${datePart}${randomPart}`;
+}
+
+console.log(generateTrackingId());
 
 
 //middleware
@@ -30,6 +49,7 @@ async function run() {
 
         const db = client.db("zap_shift_db");
         const parcelsCollection = db.collection("parcels");
+        const paymentCollection = db.collection("payments");
 
 
         // parcel's api's
@@ -125,6 +145,7 @@ async function run() {
                 mode: 'payment',
                 metadata: {
                     parcelId: paymentInfo.parcelId,
+                    parcelName: paymentInfo.parcelName,
                 },
                 success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
                 cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
@@ -140,6 +161,16 @@ async function run() {
             const session = await stripe.checkout.sessions.retrieve(sessionId);
             console.log("session retrive", session);
 
+            const transactionId = session.payment_intent
+            const query = { transactionId: transactionId }
+
+            const paymentIsExist = await paymentCollection.findOne(query);
+            if (paymentIsExist) {
+                return res.send({ message: "you have already paid for this", transactionId, trackingId: paymentIsExist.trackingId })
+            }
+
+            const trackingId = generateTrackingId();
+
             if (session.payment_status === "paid") {
                 const id = session.metadata.parcelId;
                 const query = { _id: new ObjectId(id) };
@@ -147,11 +178,34 @@ async function run() {
                 const update = {
                     $set: {
                         paymentStatus: "paid",
+                        trackingId: trackingId,
                     }
                 };
 
                 const result = await parcelsCollection.updateOne(query, update);
-                res.send(result)
+
+                const payment = {
+                    amount: session.amount_total,
+                    currency: session.currency,
+                    customerEmail: session.customer_email,
+                    parcelId: session.metadata.parcelId,
+                    parcelName: session.metadata.parcelName,
+                    transactionId: session.payment_intent,
+                    paymentStatus: session.payment_status,
+                    paidAt: new Date(),
+                    trackingId: trackingId,
+
+                }
+                if (session.payment_status === "paid") {
+                    const resultPayment = await paymentCollection.insertOne(payment);
+                    res.send({
+                        success: true,
+                        modifyParcel: result,
+                        trackingId: trackingId,
+                        transactionId: session.payment_intent,
+                        paymentInfo: resultPayment
+                    })
+                }
 
             }
             res.send({ success: false })
