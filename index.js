@@ -7,6 +7,16 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.STRIPE_SECRECT);
 const crypto = require('crypto');
 
+const admin = require("firebase-admin");
+const { getAuth } = require("firebase-admin/auth");
+``
+const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
+
+admin.initializeApp({
+    credential: admin.cert(serviceAccount),
+});
+
+
 function generateTrackingId() {
     const date = new Date();
 
@@ -23,12 +33,32 @@ function generateTrackingId() {
     return `PCL${datePart}${randomPart}`;
 }
 
-console.log(generateTrackingId());
-
 
 //middleware
 app.use(express.json())
 app.use(cors());
+
+const verifyFBToken = async (req, res, next) => {
+
+    const token = req.headers.authorization;
+    console.log(token);
+
+    if (!token) {
+        return res.status(401).send({ message: "unauthorized access" });
+    }
+
+    try {
+        const idToken = token.split(' ')[1];
+        const decoded = await getAuth().verifyIdToken(idToken);
+        console.log("decoded in the token", decoded);
+        req.decoded_email = decoded.email;
+        next()
+    }
+    catch (err) {
+        return res.status(401).send({ message: "unauthorized access" })
+    }
+
+}
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.q3bebek.mongodb.net/?appName=Cluster0`;
@@ -213,16 +243,21 @@ async function run() {
 
         })
 
-        app.get('/payments', async (req, res) => {
+        app.get('/payments', verifyFBToken, async (req, res) => {
             const email = req.query.email;
 
             const query = {};
 
             if (email) {
                 query.customerEmail = email;
+
+                //check email address
+                if (email !== req.decoded_email) {
+                    return res.status(403).send({ message: "forbidden access" })
+                }
             }
 
-            const result = await paymentCollection.find(query).toArray();
+            const result = await paymentCollection.find(query).sort({paidAt: -1}).toArray();
             res.send(result);
         })
 
@@ -242,4 +277,4 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`);
-});
+}); 
