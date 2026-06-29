@@ -84,6 +84,11 @@ async function run() {
         const ridersCollection = db.collection("riders");
 
         // users related apis
+        app.get('/users', verifyFBToken, async (req, res) => {
+            const result = await usersCollection.find().toArray();
+            res.send(result)
+        })
+
         app.post('/users', async (req, res) => {
 
             const user = req.body;
@@ -99,6 +104,19 @@ async function run() {
             const result = await usersCollection.insertOne(user);
             res.send(result);
 
+        })
+        app.patch('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)};
+            const roleInfo = req.body;
+            const updatedDoc = {
+                $set: {
+                    role: roleInfo.role
+                }
+            }
+
+            const result = await usersCollection.updateOne(query,updatedDoc);
+            res.send(result)
         })
 
         // parcel's api's
@@ -338,7 +356,7 @@ async function run() {
             const result = await ridersCollection.deleteOne(query);
             res.send(result);
         })
-        
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
