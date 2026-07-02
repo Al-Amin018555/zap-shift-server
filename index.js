@@ -89,6 +89,15 @@ async function run() {
             res.send(result)
         })
 
+        app.get('/users/:id', async (req, res) => { })
+
+        app.get('/users/:email/role', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            res.send({ role: user?.role || "user" })
+        })
+
         app.post('/users', async (req, res) => {
 
             const user = req.body;
@@ -105,9 +114,10 @@ async function run() {
             res.send(result);
 
         })
+        
         app.patch('/users/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const roleInfo = req.body;
             const updatedDoc = {
                 $set: {
@@ -115,7 +125,7 @@ async function run() {
                 }
             }
 
-            const result = await usersCollection.updateOne(query,updatedDoc);
+            const result = await usersCollection.updateOne(query, updatedDoc);
             res.send(result)
         })
 
