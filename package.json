@@ -17,8 +17,11 @@
     "firebase-admin": "^14.0.0",
     "mongodb": "^7.3.0",
     "stripe": "^22.2.1"
+<<<<<<< HEAD
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+=======
+>>>>>>> 6a1e65e0b0a96b3539bf87a27c6367c4d13f1ee9
   }
 }
