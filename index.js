@@ -83,6 +83,19 @@ async function run() {
         const paymentCollection = db.collection("payments");
         const ridersCollection = db.collection("riders");
 
+        //middleware with database access
+        const verifyAdmin = async(req, res, next) => {
+            const email = req.decoded_email;
+            const query = { email };
+
+            const user = await usersCollection.findOne(query);
+            if (!user || user.role !== "admin") {
+                return res.status(403).send({ message: "forbidden access" });
+            }
+            res.send(user)
+            next()
+        }
+
         // users related apis
         app.get('/users', verifyFBToken, async (req, res) => {
             const result = await usersCollection.find().toArray();
@@ -114,8 +127,8 @@ async function run() {
             res.send(result);
 
         })
-        
-        app.patch('/users/:id', async (req, res) => {
+
+        app.patch('/users/:id/role', verifyFBToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const roleInfo = req.body;
@@ -331,7 +344,7 @@ async function run() {
 
         })
 
-        app.patch('/riders/:id', verifyFBToken, async (req, res) => {
+        app.patch('/riders/:id', verifyFBToken,verifyAdmin, async (req, res) => {
             const status = req.body.status;
             const id = req.params.id;
 
