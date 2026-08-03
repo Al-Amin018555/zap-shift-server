@@ -84,7 +84,7 @@ async function run() {
         const ridersCollection = db.collection("riders");
 
         //middleware with database access
-        const verifyAdmin = async(req, res, next) => {
+        const verifyAdmin = async (req, res, next) => {
             const email = req.decoded_email;
             const query = { email };
 
@@ -98,7 +98,17 @@ async function run() {
 
         // users related apis
         app.get('/users', verifyFBToken, async (req, res) => {
-            const result = await usersCollection.find().toArray();
+            const searchText = req.query.searchText;
+            const query = {};
+            if (searchText) {
+                // query.displayName = searchText;
+                query.$or = [
+                    {displayName: {$regex: searchText, $options: 'i'}},
+                    {email: {$regex: searchText, $options: 'i'}},
+                ]
+            }
+
+            const result = await usersCollection.find(query).limit(3).sort({ createdAt: -1 }).toArray();
             res.send(result)
         })
 
@@ -127,7 +137,7 @@ async function run() {
 
         })
 
-        app.patch('/users/:id/role', verifyFBToken,async (req, res) => {
+        app.patch('/users/:id/role', verifyFBToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const roleInfo = req.body;
@@ -136,7 +146,7 @@ async function run() {
                     role: roleInfo.role
                 }
             }
-            
+
             const result = await usersCollection.updateOne(query, updatedDoc);
             res.send(result)
         })
@@ -267,6 +277,7 @@ async function run() {
                 const update = {
                     $set: {
                         paymentStatus: "paid",
+                        deliveryStatus: "pending-pickup",
                         trackingId: trackingId,
                     }
                 };
@@ -343,7 +354,7 @@ async function run() {
 
         })
 
-        app.patch('/riders/:id',verifyFBToken,verifyAdmin, async (req, res) => {
+        app.patch('/riders/:id', verifyFBToken, verifyAdmin, async (req, res) => {
             const status = req.body.status;
             const id = req.params.id;
 
