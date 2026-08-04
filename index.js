@@ -92,7 +92,6 @@ async function run() {
             if (!user || user.role !== "admin") {
                 return res.status(403).send({ message: "forbidden access" });
             }
-            res.send(user)
             next()
         }
 
@@ -103,8 +102,8 @@ async function run() {
             if (searchText) {
                 // query.displayName = searchText;
                 query.$or = [
-                    {displayName: {$regex: searchText, $options: 'i'}},
-                    {email: {$regex: searchText, $options: 'i'}},
+                    { displayName: { $regex: searchText, $options: 'i' } },
+                    { email: { $regex: searchText, $options: 'i' } },
                 ]
             }
 
@@ -154,11 +153,16 @@ async function run() {
         // parcel's api's
         app.get('/parcels', async (req, res) => {
             const query = {};
-            const { email } = req.query
+            const { email, deliveryStatus } = req.query
 
             if (email) {
                 query.senderEmail = email;
             }
+
+            if (deliveryStatus) {
+                query.deliveryStatus = deliveryStatus;
+            }
+
             const options = { sort: { createdAt: -1 } }
 
             const parcels = await parcelsCollection.find(query, options).toArray();
@@ -178,6 +182,37 @@ async function run() {
             parcel.createdAt = new Date();
             const result = await parcelsCollection.insertOne(parcel);
             res.send(result)
+        })
+
+        app.patch('/parcels/:id', async (req, res) => {
+            const { riderId, riderName, riderEmail } = req.body;
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+
+            const updatedDoc = {
+                $set: {
+                    riderId,
+                    riderName,
+                    riderEmail,
+                    deliveryStatus: 'driver_assigned',
+                }
+            }
+
+            const result = await parcelsCollection.updateOne(query, updatedDoc);
+
+            //update rider
+
+            const riderQuery = { _id: new ObjectId(riderId) };
+
+            const riderUpdatedDoc = {
+                $set: {
+                    workStatus: 'in_delivery'
+                }
+            }
+
+            const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdatedDoc);
+
+            res.send(riderResult);
         })
 
         app.delete('/parcels/:id', async (req, res) => {
@@ -333,11 +368,17 @@ async function run() {
         // riders related apis
 
         app.get('/riders', async (req, res) => {
-            const status = req.query.status;
+            const { status, riderDistrict, workStatus } = req.query;
             const query = {};
 
             if (status) {
                 query.status = status;
+            }
+            if (riderDistrict) {
+                query.riderDistrict = riderDistrict;
+            }
+            if (workStatus) {
+                query.workStatus = workStatus;
             }
 
             const result = await ridersCollection.find(query).toArray();
@@ -363,8 +404,10 @@ async function run() {
             const updatedDoc = {
                 $set: {
                     status: status,
+                    workStatus: 'available',
                 }
             }
+
             const result = await ridersCollection.updateOne(query, updatedDoc)
 
             if (status === "approved") {
@@ -379,6 +422,7 @@ async function run() {
                 const result = await usersCollection.updateOne(userQuery, updatedDoc);
             }
             res.send(result)
+            console.log(result)
         })
 
         app.delete('/riders/:id', async (req, res) => {
