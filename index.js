@@ -202,7 +202,8 @@ async function run() {
             res.send(result)
         })
 
-        app.patch('/parcels/:id', async (req, res) => {
+        //api given specific name /parcels/:id/assign
+        app.patch('/parcels/:id/assign', async (req, res) => {
             const { riderId, riderName, riderEmail } = req.body;
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
