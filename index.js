@@ -169,6 +169,24 @@ async function run() {
             res.send(parcels);
         })
 
+        app.get('/parcels/rider', async (req, res) => {
+            const { riderEmail, deliveryStatus } = req.query;
+            const query = {};
+
+            if (riderEmail) {
+                query.riderEmail = riderEmail;
+            }
+            if (deliveryStatus) {
+                query.deliveryStatus = deliveryStatus;
+            }
+
+            const result = await parcelsCollection.find(query).toArray();
+            console.log("rider assigned delivery ",result)
+            res.send(result);
+
+
+        })
+
         app.get('/parcels/:id', async (req, res) => {
             const id = req.params.id;
             const query = new ObjectId(id);
