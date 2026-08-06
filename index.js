@@ -177,7 +177,7 @@ async function run() {
                 query.riderEmail = riderEmail;
             }
             if (deliveryStatus) {
-                query.deliveryStatus = deliveryStatus;
+                query.deliveryStatus = {$in: ['driver_assigned','rider_arriving']};
             }
 
             const result = await parcelsCollection.find(query).toArray();
