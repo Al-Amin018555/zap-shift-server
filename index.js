@@ -181,7 +181,6 @@ async function run() {
             }
 
             const result = await parcelsCollection.find(query).toArray();
-            console.log("rider assigned delivery ",result)
             res.send(result);
 
 
@@ -217,7 +216,7 @@ async function run() {
                 }
             }
 
-            const result = await parcelsCollection.updateOne(query, updatedDoc);
+            const parcelResult = await parcelsCollection.updateOne(query, updatedDoc);
 
             //update rider
 
@@ -231,7 +230,60 @@ async function run() {
 
             const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdatedDoc);
 
-            res.send(riderResult);
+            res.send({
+                success:
+                    parcelResult.modifiedCount === 1 &&
+                    riderResult.modifiedCount === 1
+            });
+        })
+
+        app.patch('/parcels/:id/status', async (req, res) => {
+            const { deliveryStatus } = req.body;
+
+            const query = { _id: new ObjectId(req.params.id) };
+            const updatedDoc = {
+                $set: {
+                    deliveryStatus: deliveryStatus
+                }
+            }
+
+            const result = await parcelsCollection.updateOne(query, updatedDoc);
+            res.send(result);
+
+        })
+
+        app.patch('/parcels/:id/reject', async (req, res) => {
+
+            const query = { _id: new ObjectId(req.params.id) }
+            const parcel = await parcelsCollection.findOne(query)
+
+            const riderId = parcel.riderId;
+
+            const parcelUpdatedDoc = {
+                $set: {
+                    deliveryStatus: "pending_pickup",
+                    riderId: null,
+                    riderName: null,
+                    riderEmail: null
+                }
+            };
+
+            const parcelResult = await parcelsCollection.updateOne(query, parcelUpdatedDoc);
+
+            const riderQuery = { _id: new ObjectId(riderId) };
+            const riderUpdatedDoc = {
+                $set: {
+                    workStatus: 'available'
+                }
+            };
+
+            const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdatedDoc);
+            res.send({
+                success:
+                    parcelResult.modifiedCount === 1 &&
+                    riderResult.modifiedCount === 1
+            });
+
         })
 
         app.delete('/parcels/:id', async (req, res) => {
