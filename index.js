@@ -178,7 +178,7 @@ async function run() {
             }
             if (deliveryStatus) {
                 // query.deliveryStatus = {$in: ['driver_assigned','rider_arriving']};
-                query.deliveryStatus = {$nin: ['parcel_delivered']};
+                query.deliveryStatus = { $nin: ['parcel_delivered'] };
             }
 
             const result = await parcelsCollection.find(query).toArray();
@@ -239,13 +239,27 @@ async function run() {
         })
 
         app.patch('/parcels/:id/status', async (req, res) => {
-            const { deliveryStatus } = req.body;
+            const { deliveryStatus,riderId } = req.body;
 
             const query = { _id: new ObjectId(req.params.id) };
             const updatedDoc = {
                 $set: {
                     deliveryStatus: deliveryStatus
                 }
+            }
+
+            if (deliveryStatus === 'parcel_delivered') {
+                //update rider
+
+                const riderQuery = { _id: new ObjectId(riderId) };
+
+                const riderUpdatedDoc = {
+                    $set: {
+                        workStatus: 'available'
+                    }
+                }
+
+                const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdatedDoc);
             }
 
             const result = await parcelsCollection.updateOne(query, updatedDoc);
