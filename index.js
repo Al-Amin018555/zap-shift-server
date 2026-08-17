@@ -9,8 +9,9 @@ const crypto = require('crypto');
 
 const admin = require("firebase-admin");
 const { getAuth } = require("firebase-admin/auth");
-``
-const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
+
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
     credential: admin.cert(serviceAccount),
@@ -497,7 +498,7 @@ async function run() {
             res.send(result);
         })
 
-   
+
         app.post('/riders', async (req, res) => {
             const rider = req.body;
             rider.status = "pending",
@@ -554,9 +555,9 @@ async function run() {
             const result = await trackingsCollection.find(query).toArray();
             res.send(result)
         })
-        // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // // Send a ping to confirm a successful connection
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
