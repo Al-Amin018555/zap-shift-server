@@ -212,6 +212,27 @@ async function run() {
             res.send(result);
         })
 
+        app.get('/parcels/delivery-status/stats', async (req, res) => {
+            const pipeline = [
+                {
+                    $group: {
+                        _id: '$deliveryStatus',
+                        count: { $sum: 1 }
+                    }
+                },
+                {
+                    $project: {
+                        status: '$_id',
+                        count: 1,
+                        // _id: 0,
+                    }
+                }
+            ];
+
+            const results = await parcelsCollection.aggregate(pipeline).toArray();
+            res.send(results)
+
+        })
         app.post('/parcels', async (req, res) => {
             const parcel = req.body;
 
@@ -339,37 +360,6 @@ async function run() {
 
         })
 
-        //payment realted api's
-
-        // app.post('/payment-checkout-session', async (req, res) => {
-        //     const paymentInfo = req.body;
-        //     const amount = parseInt(paymentInfo.cost) * 100;
-        //     const session = await stripe.checkout.sessions.create({
-        //         line_items: [
-        //             {
-        //                 price_data: {
-        //                     currency: 'usd',
-        //                     unit_amount: amount,
-        //                     product_data: {
-        //                         name: paymentInfo.name,
-
-        //                     },
-        //                 },
-        //                 quantity: 1,
-        //             },
-        //         ],
-        //         mode: 'payment',
-        //         customer_email: paymentInfo.senderEmail,
-        //         metadata: {
-        //             parcelId: paymentInfo.parcelId,
-        //         },
-        //         success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        //         cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
-        //     });
-        //     console.log(session);
-        //     res.send({ url: session.url })
-        // });
-
         app.post('/create-checkout-session', async (req, res) => {
 
             const paymentInfo = req.body;
@@ -410,8 +400,8 @@ async function run() {
             const session = await stripe.checkout.sessions.retrieve(sessionId);
             console.log("session retrive", session);
 
-            const transactionId = session.payment_intent
-            const query = { transactionId: transactionId }
+            const transactionId = session.payment_intent;
+            const query = { transactionId: transactionId };
 
             const paymentIsExist = await paymentCollection.findOne(query);
 
@@ -429,8 +419,9 @@ async function run() {
                 const id = session.metadata.parcelId;
                 const query = { _id: new ObjectId(id) };
 
-                logTracking(trackingId, 'pending-pickup')
-                
+                await logTracking(trackingId, 'parcel_paid')
+                await logTracking(trackingId, 'pending-pickup')
+
                 const update = {
                     $set: {
                         paymentStatus: "paid",
@@ -454,7 +445,6 @@ async function run() {
                 }
                 if (session.payment_status === "paid") {
                     const resultPayment = await paymentCollection.insertOne(payment);
-                    logTracking(trackingId, 'parcel_paid')
                     res.send({
                         success: true,
                         modifyParcel: result,
@@ -507,6 +497,7 @@ async function run() {
             res.send(result);
         })
 
+   
         app.post('/riders', async (req, res) => {
             const rider = req.body;
             rider.status = "pending",
